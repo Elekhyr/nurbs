@@ -15,12 +15,16 @@ struct nurbs
   Booleen polygone_ctrl;
 } ; 
 
-static int cacluler_r(Table_flottant U, int n, int k, double u)
+static int cacluler_r(Table_flottant *U, int n, int k, double u)
 {
-	for (int i = k-1; i < n ; i++) {
-		if (U.table[i] <= u && u <= U.table[i+1])
+	
+	int i  = 0;
+	for (i = k-1; i < n ; i++) {
+		if (U->table[i] <= u && u < U->table[i+1]) {
 			return i;
+		}
 	}
+	return n-1;
 }
 
 static Triplet calcPoint(Table_quadruplet pts_nurbs, Table_flottant sequence_nodale, double u, int r, int k)
@@ -38,8 +42,8 @@ static Triplet calcPoint(Table_quadruplet pts_nurbs, Table_flottant sequence_nod
 		T.table[i].h  = pts_nurbs.table[i].h;
 	}
 
-	for(int j = 1; j < k - 1 ; k++) {
-		for(int i = r ; i > r-k+1+j ; i--) {
+	for(int j = 1; j <= k - 1 ; j++) {
+		for(int i = r ; i >= r-k+1+j; i--) {
 			
 			T.table[i].x = T.table[i].x * 
 						(u - sequence_nodale.table[i])/
@@ -70,37 +74,36 @@ static Triplet calcPoint(Table_quadruplet pts_nurbs, Table_flottant sequence_nod
 						(sequence_nodale.table[i+k-j] - sequence_nodale.table[i]);
 		}
 	}
-	//projection en cartesien
+	//~ //projection en cartesien
 	
-	T.table[k-1].x  = T.table[k-1].x / T.table[k-1].h;
-	T.table[k-1].y  = T.table[k-1].y / T.table[k-1].h;
-	T.table[k-1].z  = T.table[k-1].z / T.table[k-1].h;
+	T.table[r].x  = T.table[r].x / T.table[r].h;
+	T.table[r].y  = T.table[r].y / T.table[r].h;
+	T.table[r].z  = T.table[r].z / T.table[r].h;
 	
-	P.x = T.table[k-1].x;
-	P.y = T.table[k-1].y;
-	P.z = T.table[k-1].z;
+	P.x = T.table[r].x;
+	P.y = T.table[r].y;
+	P.z = T.table[r].z;
 	free(T.table);
 	return P;
 }
 
 static void affiche_nurbs(struct nurbs *o)
 {
-	
-	glEnd();
 	glBegin(GL_LINE_STRIP) ;
 	
 	for(int k=0 ; k < o->nb_pts ; k++)
 	{
 		glVertex3f(o->affichage.table[k].x, o->affichage.table[k].y, o->affichage.table[k].z);
 	}
+	
 	glEnd();
 
 	//affichage polynome controle
 	if (o->polygone_ctrl) {
 		int j;
+		
 		glBegin(GL_LINE_STRIP) ;
 		
-
 		for(j=0  ; j<o->table_nurbs.nb ; j++)
 			glVertex3f(
 				o->table_nurbs.table[j].x,
@@ -151,17 +154,16 @@ static void inserer_noeud(Table_flottant *sequence_nodale, double nouveau_noeud)
 		
 }
 static void changement(struct nurbs *o)
-{ 
-	double u = 0.f;
+{
+	if ( ! (UN_CHAMP_CHANGE(o)||CREATION(o)) )
+    return ;
+    
 	double pas = 1.f/(o->nb_pts -1);
 	
 	if (CREATION(o))
 	{
 		o->sequence_nodale.nb = o->degre + o->table_nurbs.nb + 1;
 		ALLOUER(o->sequence_nodale.table, o->sequence_nodale.nb);
-		
-		for (unsigned i = 0; i < o-> sequence_nodale.nb; ++i)
-			o->sequence_nodale.table[i] = 0;
 			
 		for (unsigned i = 0; i <= o->degre; ++i)
 		{
@@ -171,53 +173,80 @@ static void changement(struct nurbs *o)
 		
 		for (unsigned i = o->degre + 1; i < o->table_nurbs.nb; ++i)
 		{
-			o->sequence_nodale.table[i] = i - o->degre + 1;
-			o->sequence_nodale.table[i] /= o->table_nurbs.nb - o->degre + 2;
-		}	
+			o->sequence_nodale.table[i] = i - o->degre;
+			o->sequence_nodale.table[i] /= o->table_nurbs.nb - (o->degre + 1) + 1;
+		}
+		
+		if (o->nb_pts < 2)
+			o->nb_pts = 10;
+		
+		o->affichage.nb = o->nb_pts;
+		ALLOUER(o->affichage.table, o->nb_pts);
+		
+		double u = 0.f;
+		
+		for(int k = 0 ; k < o->nb_pts ; k++)
+		{
+			int r = cacluler_r(&o->sequence_nodale, o->table_nurbs.nb, o->degre + 1, u);
+			o->affichage.table[k] = calcPoint(o->table_nurbs, o->sequence_nodale, u, r, o->degre + 1);
+			u += pas;
+		}
+	}
+	
+	if (CHAMP_CHANGE(o, nb_pts)){
+		if (o->nb_pts < 2)
+			o->nb_pts = 10;
 	}
 	
 	if (CHAMP_CHANGE(o, nouveau_noeud)){
 		inserer_noeud(&(o->sequence_nodale), o->nouveau_noeud);
-		o->degre += 1;
 	}
-		
+	
 	if (CHAMP_CHANGE(o, degre)){
-		o->sequence_nodale.nb = o->degre + o->table_nurbs.nb + 2;
+		if (o->degre < 0)
+			o->degre = 0;
+		if (o->degre > o->table_nurbs.nb - 1)
+			o->degre = o->table_nurbs.nb - 1;
+		
+		o->sequence_nodale.nb = o->degre + o->table_nurbs.nb + 1;
 		free(o->sequence_nodale.table);
 		ALLOUER(o->sequence_nodale.table, o->sequence_nodale.nb);
-
 			
 		for (unsigned i = 0; i <= o->degre; ++i)
 		{
 			o->sequence_nodale.table[i] = 0;
-			o->sequence_nodale.table[ 1 + i + o->table_nurbs.nb] = 1;
+			o->sequence_nodale.table[i + o->table_nurbs.nb] = 1;
 		}
 		
-		for (unsigned i = o->degre + 1; i <= o->table_nurbs.nb; ++i)
+		for (unsigned i = o->degre + 1; i < o->table_nurbs.nb; ++i)
 		{
-			o->sequence_nodale.table[i] = i - (o->degre + 1) + 1;
-			o->sequence_nodale.table[i] /= o->table_nurbs.nb - (o->degre + 1) + 2;
+			o->sequence_nodale.table[i] = i - o->degre ;
+			o->sequence_nodale.table[i] /= o->table_nurbs.nb - (o->degre + 1) + 1;
+		}	
+	}
+	
+	if (CHAMP_CHANGE(o, nouveau_noeud) || CHAMP_CHANGE(o, nb_pts) || CHAMP_CHANGE(o, degre) || CHAMP_CHANGE(o, table_nurbs)) {
+		
+		o->affichage.nb = o->nb_pts;
+		free(o->affichage.table);
+		ALLOUER(o->affichage.table, o->nb_pts);
+		
+		double u = 0.f;
+		
+		for(int k=0 ; k < o->nb_pts ; k++)
+		{
+			int r = cacluler_r(&o->sequence_nodale, o->table_nurbs.nb, o->degre + 1, u);
+			o->affichage.table[k] = calcPoint(o->table_nurbs, o->sequence_nodale, u, r, o->degre + 1);
+			u += pas;
 		}
 	}
 
-	ALLOUER(o->affichage.table, o->nb_pts);
-	
-	if (o->nb_pts < 2)
-		o->nb_pts = 10;
-	
-	for(int k=0 ; k < o->nb_pts ; k++)
-	{
-		/*int r = cacluler_r(o->sequence_nodale, o->table_nurbs.nb, o->degre, u);
-		o->affichage.table[k] = calcPoint(o->table_nurbs, o->sequence_nodale ,u, r, o->degre);
-		u += pas;*/
-	}
-	
 }
 
 CLASSE(nurbs, struct nurbs,      
        CHAMP(table_nurbs, L_table_point P_table_quadruplet Sauve Extrait)   
        CHAMP(degre, LABEL("degre") L_entier Edite Sauve DEFAUT("2"))
-       CHAMP(nb_pts, LABEL("Nombre de points") L_entier  Edite Sauve DEFAUT("10") )
+       CHAMP(nb_pts, LABEL("Nombre de points") L_entier  Edite Sauve DEFAUT("20") )
        CHAMP(sequence_nodale, LABEL("Sequence Nodale") L_table_flottant P_table_flottant Affiche Extrait)
        CHAMP(nouveau_noeud, LABEL("Nouveau noeud") L_flottant Edite Sauve)
        CHAMP(polygone_ctrl, LABEL("afficher le polygone de contrôle") L_booleen  Edite Sauve DEFAUT("0") )
