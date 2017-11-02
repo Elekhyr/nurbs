@@ -15,7 +15,15 @@ struct nurbs
   Booleen polygone_ctrl;
 } ; 
 
-static Triplet calcPoint(Table_quadruplet pts_nurbs, double u)
+static int cacluler_r(Table_flottant U, int n, int k, double u)
+{
+	for (int i = k-1; i < n ; i++) {
+		if (U.table[i] <= u && u <= U.table[i+1])
+			return i;
+	}
+}
+
+static Triplet calcPoint(Table_quadruplet pts_nurbs, Table_flottant sequence_nodale, double u, int r, int k)
 {
 	Table_quadruplet T;
 	T.nb = pts_nurbs.nb;
@@ -29,26 +37,48 @@ static Triplet calcPoint(Table_quadruplet pts_nurbs, double u)
 		T.table[i].z  = pts_nurbs.table[i].z * pts_nurbs.table[i].h;
 		T.table[i].h  = pts_nurbs.table[i].h;
 	}
-	
-	for(int rang = 1; rang < pts_nurbs.nb ; rang++) {
-		//de casteljau
-		
-		for(int i=0 ; i < pts_nurbs.nb - rang ; i++) {
-			T.table[i].x = T.table[i].x * (1-u) + T.table[i+1].x * u;
-			T.table[i].y = T.table[i].y * (1-u) + T.table[i+1].y * u;
-			T.table[i].z = T.table[i].z * (1-u) + T.table[i+1].z * u;
-			T.table[i].h = T.table[i].h * (1-u) + T.table[i+1].h * u;
+
+	for(int j = 1; j < k - 1 ; k++) {
+		for(int i = r ; i > r-k+1+j ; i--) {
+			
+			T.table[i].x = T.table[i].x * 
+						(u - sequence_nodale.table[i])/
+						(sequence_nodale.table[i+k-j] - sequence_nodale.table[i]) +
+						T.table[i-1].x * 
+						(sequence_nodale.table[i+k-j] - u)/
+						(sequence_nodale.table[i+k-j] - sequence_nodale.table[i]);
+						
+			T.table[i].y = T.table[i].y * 
+						(u - sequence_nodale.table[i])/
+						(sequence_nodale.table[i+k-j] - sequence_nodale.table[i]) +
+						T.table[i-1].y * 
+						(sequence_nodale.table[i+k-j] - u)/
+						(sequence_nodale.table[i+k-j] - sequence_nodale.table[i]);
+						
+			T.table[i].z = T.table[i].z * 
+						(u - sequence_nodale.table[i])/
+						(sequence_nodale.table[i+k-j] - sequence_nodale.table[i]) +
+						T.table[i-1].z * 
+						(sequence_nodale.table[i+k-j] - u)/
+						(sequence_nodale.table[i+k-j] - sequence_nodale.table[i]);
+						
+			T.table[i].h = T.table[i].h * 
+						(u - sequence_nodale.table[i])/
+						(sequence_nodale.table[i+k-j] - sequence_nodale.table[i]) +
+						T.table[i-1].h * 
+						(sequence_nodale.table[i+k-j] - u)/
+						(sequence_nodale.table[i+k-j] - sequence_nodale.table[i]);
 		}
 	}
 	//projection en cartesien
 	
-	T.table[0].x  = T.table[0].x / T.table[0].h;
-	T.table[0].y  = T.table[0].y / T.table[0].h;
-	T.table[0].z  = T.table[0].z / T.table[0].h;
+	T.table[k-1].x  = T.table[k-1].x / T.table[k-1].h;
+	T.table[k-1].y  = T.table[k-1].y / T.table[k-1].h;
+	T.table[k-1].z  = T.table[k-1].z / T.table[k-1].h;
 	
-	P.x = T.table[0].x;
-	P.y = T.table[0].y;
-	P.z = T.table[0].z;
+	P.x = T.table[k-1].x;
+	P.y = T.table[k-1].y;
+	P.z = T.table[k-1].z;
 	free(T.table);
 	return P;
 }
@@ -156,10 +186,10 @@ static void changement(struct nurbs *o)
 	
 	for(int k=0 ; k < o->nb_pts ; k++)
 	{
-		o->affichage.table[k] = calcPoint(o->table_nurbs, u);
+		int r = cacluler_r(o->sequence_nodale, o->table_nurbs.nb, o->degre, u);
+		o->affichage.table[k] = calcPoint(o->table_nurbs, o->sequence_nodale ,u, r, o->degre);
 		u += pas;
 	}
-	
 	
 }
 
@@ -174,6 +204,6 @@ CLASSE(nurbs, struct nurbs,
        CHAMP_VIRTUEL(L_affiche_gl(affiche_nurbs))
        
        MENU("TP_PERSO/nurbs")
-       EVENEMENT("Ctrl+BR")
+       EVENEMENT("Ctrl+NU")
        )
        
