@@ -127,7 +127,28 @@ static void changement(struct nurbs *o)
 	
 	if (CHAMP_CHANGE(o, nouveau_noeud))
 		inserer_noeud(&(o->sequence_nodale), o->nouveau_noeud);
-	
+		
+	if (CHAMP_CHANGE(o, degre)){
+		o->sequence_nodale.nb = o->degre + o->table_nurbs.nb + 1;
+		free(o->sequence_nodale.table);
+		ALLOUER(o->sequence_nodale.table, o->sequence_nodale.nb);
+		
+		for (unsigned i = 0; i < o-> sequence_nodale.nb; ++i)
+			o->sequence_nodale.table[i] = 0;
+			
+		for (unsigned i = 0; i <= o->degre; ++i)
+		{
+			o->sequence_nodale.table[i] = 0;
+			o->sequence_nodale.table[i + o->table_nurbs.nb] = 1;
+		}
+		
+		for (unsigned i = o->degre + 1; i < o->table_nurbs.nb; ++i)
+		{
+			o->sequence_nodale.table[i] = i - o->degre + 1;
+			o->sequence_nodale.table[i] /= o->table_nurbs.nb - o->degre + 2;
+		}
+	}
+
 	ALLOUER(o->affichage.table, o->nb_pts);
 	
 	if (o->nb_pts < 2)
