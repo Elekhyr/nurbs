@@ -118,16 +118,37 @@ static void inserer_noeud(Table_flottant *sequence_nodale, double nouveau_noeud)
 	ALLOUER(nouvelle_sequence_nodale.table, nouvelle_sequence_nodale.nb);
 	
 	unsigned i;
-	for(i = 0; i < sequence_nodale->nb / 2; ++i)
+	int inserted = 0;
+	for(i = 0; i < sequence_nodale->nb; ++i)
 	{
-		nouvelle_sequence_nodale.table[i] = sequence_nodale->table[i];
-		nouvelle_sequence_nodale.table[i + sequence_nodale->nb / 2 + 1] = sequence_nodale->table[i + sequence_nodale->nb / 2];
+		if (inserted == 0)
+		{
+			if (sequence_nodale->table[i] < nouveau_noeud)
+				nouvelle_sequence_nodale.table[i] = sequence_nodale->table[i];
+			else
+			{
+				nouvelle_sequence_nodale.table[i] = nouveau_noeud;
+				nouvelle_sequence_nodale.table[i + 1] = sequence_nodale->table[i];
+				inserted = 1;
+			}
+		}
+		else
+			nouvelle_sequence_nodale.table[i + 1] = sequence_nodale->table[i];
 	}
-	
-	nouvelle_sequence_nodale.table[i] = nouveau_noeud;
+	if (inserted == 0)
+		nouvelle_sequence_nodale.table[nouvelle_sequence_nodale.nb - 1] = nouveau_noeud;
+				
+		
 	
 	free(sequence_nodale->table);
-	sequence_nodale->table = nouvelle_sequence_nodale.table;
+	sequence_nodale->nb = nouvelle_sequence_nodale.nb;
+	ALLOUER(sequence_nodale->table, nouvelle_sequence_nodale.nb);
+	
+	for(i = 0; i < sequence_nodale->nb; ++i)
+	{
+		sequence_nodale->table[i] = nouvelle_sequence_nodale.table[i];
+	}
+		
 }
 static void changement(struct nurbs *o)
 { 
@@ -155,8 +176,10 @@ static void changement(struct nurbs *o)
 		}	
 	}
 	
-	if (CHAMP_CHANGE(o, nouveau_noeud))
+	if (CHAMP_CHANGE(o, nouveau_noeud)){
 		inserer_noeud(&(o->sequence_nodale), o->nouveau_noeud);
+		o->degre += 1;
+	}
 		
 	if (CHAMP_CHANGE(o, degre)){
 		o->sequence_nodale.nb = o->degre + o->table_nurbs.nb + 1;
@@ -186,9 +209,9 @@ static void changement(struct nurbs *o)
 	
 	for(int k=0 ; k < o->nb_pts ; k++)
 	{
-		int r = cacluler_r(o->sequence_nodale, o->table_nurbs.nb, o->degre, u);
+		/*int r = cacluler_r(o->sequence_nodale, o->table_nurbs.nb, o->degre, u);
 		o->affichage.table[k] = calcPoint(o->table_nurbs, o->sequence_nodale ,u, r, o->degre);
-		u += pas;
+		u += pas;*/
 	}
 	
 }
