@@ -114,7 +114,7 @@ static void affiche_nurbs(struct nurbs *o)
 	}
 }
 
-static void inserer_noeud(Table_flottant *sequence_nodale, double nouveau_noeud)
+static void inserer_noeud(Table_quadruplet *table_nurbs, int* degre, Table_flottant *sequence_nodale, double nouveau_noeud)
 {//todo
 	Table_flottant nouvelle_sequence_nodale;
 	nouvelle_sequence_nodale.nb = sequence_nodale->nb + 1;
@@ -151,6 +151,39 @@ static void inserer_noeud(Table_flottant *sequence_nodale, double nouveau_noeud)
 	{
 		sequence_nodale->table[i] = nouvelle_sequence_nodale.table[i];
 	}
+	
+	// on recalcule les points de contrôle 
+	
+	Table_quadruplet n_table_nurbs;
+	n_table_nurbs.nb = table_nurbs->nb + 1;
+	ALLOUER (n_table_nurbs.table, n_table_nurbs.nb);
+	
+	for (i = 0; i < n_table_nurbs; ++i)
+	{
+		if (i <= table_nurbs->nb - (degre + 1) + 1){
+			n_table_nurbs.table[i].x = table_nurbs->table[i].x;
+			n_table_nurbs.table[i].y = table_nurbs->table[i].y;
+			n_table_nurbs.table[i].z = table_nurbs->table[i].z;
+		}
+		else if (i >= table_nurbs->nb + 1)
+		{
+			n_table_nurbs.table[i].x = table_nurbs->table[i - 1].x;
+			n_table_nurbs.table[i].y = table_nurbs->table[i - 1].y;
+			n_table_nurbs.table[i].z = table_nurbs->table[i - 1].z;	
+		}
+		else
+		{
+			double a = nouveau_noeud - sequence_nodale[i];
+			a /= sequence_nodale[table_nurbs->nb + (*degre)] - sequence_nodale[i];
+
+			n_table_nurbs.table[i].x = (1 - a) * table_nurbs->table[i - 1].x + a * table_nurbs->table[i].x;
+			n_table_nurbs.table[i].y = (1 - a) * table_nurbs->table[i - 1].y + a * table_nurbs->table[i].y;
+			n_table_nurbs.table[i].z = (1 - a) * table_nurbs->table[i - 1].z + a * table_nurbs->table[i].z;	
+		}
+	}
+	//http://web.mit.edu/hyperbook/Patrikalakis-Maekawa-Cho/node18.html
+	table_nurbs->table = n_table_nurbs.table;
+	table_nurbs->nb = n_table_nurbs.nb;
 		
 }
 static void changement(struct nurbs *o)
@@ -199,7 +232,7 @@ static void changement(struct nurbs *o)
 	}
 	
 	if (CHAMP_CHANGE(o, nouveau_noeud)){
-		inserer_noeud(&(o->sequence_nodale), o->nouveau_noeud);
+		inserer_noeud(&(o->table_nurbs), &(o->degre), &(o->sequence_nodale), o->nouveau_noeud);
 	}
 	
 	if (CHAMP_CHANGE(o, degre)){
