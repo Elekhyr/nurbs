@@ -115,7 +115,8 @@ static void affiche_nurbs(struct nurbs *o)
 }
 
 static void inserer_noeud(Table_quadruplet *table_nurbs, int* degre, Table_flottant *sequence_nodale, double nouveau_noeud)
-{//todo
+{
+
 	Table_flottant nouvelle_sequence_nodale;
 	nouvelle_sequence_nodale.nb = sequence_nodale->nb + 1;
 	ALLOUER(nouvelle_sequence_nodale.table, nouvelle_sequence_nodale.nb);
@@ -158,32 +159,51 @@ static void inserer_noeud(Table_quadruplet *table_nurbs, int* degre, Table_flott
 	n_table_nurbs.nb = table_nurbs->nb + 1;
 	ALLOUER (n_table_nurbs.table, n_table_nurbs.nb);
 	
-	for (i = 0; i < n_table_nurbs; ++i)
+	for (i = 0; i < n_table_nurbs.nb; ++i)
 	{
-		if (i <= table_nurbs->nb - (degre + 1) + 1){
+		if (i <= table_nurbs->nb - ((*degre) + 1)){
 			n_table_nurbs.table[i].x = table_nurbs->table[i].x;
 			n_table_nurbs.table[i].y = table_nurbs->table[i].y;
 			n_table_nurbs.table[i].z = table_nurbs->table[i].z;
+			n_table_nurbs.table[i].h = table_nurbs->table[i].h;
 		}
 		else if (i >= table_nurbs->nb + 1)
 		{
 			n_table_nurbs.table[i].x = table_nurbs->table[i - 1].x;
 			n_table_nurbs.table[i].y = table_nurbs->table[i - 1].y;
 			n_table_nurbs.table[i].z = table_nurbs->table[i - 1].z;	
+			n_table_nurbs.table[i].h = table_nurbs->table[i - 1].h;	
 		}
 		else
 		{
-			double a = nouveau_noeud - sequence_nodale[i];
-			a /= sequence_nodale[table_nurbs->nb + (*degre)] - sequence_nodale[i];
+			double a = nouveau_noeud - sequence_nodale->table[i];
+			a /= sequence_nodale->table[table_nurbs->nb + (*degre)] - sequence_nodale->table[i];
 
 			n_table_nurbs.table[i].x = (1 - a) * table_nurbs->table[i - 1].x + a * table_nurbs->table[i].x;
 			n_table_nurbs.table[i].y = (1 - a) * table_nurbs->table[i - 1].y + a * table_nurbs->table[i].y;
-			n_table_nurbs.table[i].z = (1 - a) * table_nurbs->table[i - 1].z + a * table_nurbs->table[i].z;	
+			n_table_nurbs.table[i].z = (1 - a) * table_nurbs->table[i - 1].z + a * table_nurbs->table[i].z;
+			n_table_nurbs.table[i].h = (1 - a) * table_nurbs->table[i - 1].h + a * table_nurbs->table[i].h;	
+				
 		}
 	}
-	//http://web.mit.edu/hyperbook/Patrikalakis-Maekawa-Cho/node18.html
-	table_nurbs->table = n_table_nurbs.table;
+	
+	double x = table_nurbs->table[table_nurbs->nb].x;
+	double y = table_nurbs->table[table_nurbs->nb].y;
+	double z = table_nurbs->table[table_nurbs->nb].z;
+	double h = table_nurbs->table[table_nurbs->nb].h;
+
+	free(table_nurbs->table);
 	table_nurbs->nb = n_table_nurbs.nb;
+	ALLOUER(table_nurbs->table, table_nurbs->nb);
+	
+	for (i = 0; i < table_nurbs->nb; ++i)
+	{
+		table_nurbs->table[i].x = n_table_nurbs.table[i].x;
+		table_nurbs->table[i].y = n_table_nurbs.table[i].y;
+		table_nurbs->table[i].z = n_table_nurbs.table[i].z;
+		table_nurbs->table[i].h = n_table_nurbs.table[i].h;	
+	}
+	free(n_table_nurbs.table);
 		
 }
 static void changement(struct nurbs *o)
@@ -224,6 +244,7 @@ static void changement(struct nurbs *o)
 			o->affichage.table[k] = calcPoint(o->table_nurbs, o->sequence_nodale, u, r, o->degre + 1);
 			u += pas;
 		}
+		return;
 	}
 	
 	if (CHAMP_CHANGE(o, nb_pts)){
@@ -277,7 +298,7 @@ static void changement(struct nurbs *o)
 }
 
 CLASSE(nurbs, struct nurbs,      
-       CHAMP(table_nurbs, L_table_point P_table_quadruplet Sauve Extrait)   
+       CHAMP(table_nurbs, L_table_point P_table_quadruplet Sauve Affiche Edite Extrait)   
        CHAMP(degre, LABEL("degre") L_entier Edite Sauve DEFAUT("2"))
        CHAMP(nb_pts, LABEL("Nombre de points") L_entier  Edite Sauve DEFAUT("20") )
        CHAMP(sequence_nodale, LABEL("Sequence Nodale") L_table_flottant P_table_flottant Affiche Extrait)
@@ -289,4 +310,4 @@ CLASSE(nurbs, struct nurbs,
        MENU("TP_PERSO/nurbs")
        EVENEMENT("Ctrl+NU")
        )
-       
+      
