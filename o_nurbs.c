@@ -14,7 +14,6 @@ struct nurbs
   Table_flottant sequence_nodale;
   Booleen polygone_ctrl;
 } ; 
-
 static int cacluler_r(Table_flottant *U, int n, int k, double u)
 {
 	
@@ -101,15 +100,13 @@ static void affiche_nurbs(struct nurbs *o)
 	//affichage polynome controle
 	if (o->polygone_ctrl) {
 		int j;
-		
 		glBegin(GL_LINE_STRIP) ;
-		
-		for(j=0  ; j<o->table_nurbs.nb ; j++)
+		for(j=0  ; j<o->table_nurbs.nb ; j++){
 			glVertex3f(
 				o->table_nurbs.table[j].x,
 				o->table_nurbs.table[j].y,
 				o->table_nurbs.table[j].z); 
-
+		}
 		glEnd();
 	}
 }
@@ -186,11 +183,6 @@ static void inserer_noeud(Table_quadruplet *table_nurbs, int* degre, Table_flott
 				
 		}
 	}
-	
-	double x = table_nurbs->table[table_nurbs->nb].x;
-	double y = table_nurbs->table[table_nurbs->nb].y;
-	double z = table_nurbs->table[table_nurbs->nb].z;
-	double h = table_nurbs->table[table_nurbs->nb].h;
 
 	free(table_nurbs->table);
 	table_nurbs->nb = n_table_nurbs.nb;
@@ -215,6 +207,7 @@ static void changement(struct nurbs *o)
 	
 	if (CREATION(o))
 	{
+
 		o->sequence_nodale.nb = o->degre + o->table_nurbs.nb + 1;
 		ALLOUER(o->sequence_nodale.table, o->sequence_nodale.nb);
 			
@@ -247,6 +240,7 @@ static void changement(struct nurbs *o)
 		return;
 	}
 	
+	
 	if (CHAMP_CHANGE(o, nb_pts)){
 		if (o->nb_pts < 2)
 			o->nb_pts = 10;
@@ -257,6 +251,7 @@ static void changement(struct nurbs *o)
 	}
 	
 	if (CHAMP_CHANGE(o, degre)){
+		
 		if (o->degre < 0)
 			o->degre = 0;
 		if (o->degre > o->table_nurbs.nb - 1)
@@ -281,6 +276,7 @@ static void changement(struct nurbs *o)
 	
 	if (CHAMP_CHANGE(o, nouveau_noeud) || CHAMP_CHANGE(o, nb_pts) || CHAMP_CHANGE(o, degre) || CHAMP_CHANGE(o, table_nurbs)) {
 		
+		
 		o->affichage.nb = o->nb_pts;
 		free(o->affichage.table);
 		ALLOUER(o->affichage.table, o->nb_pts);
@@ -293,6 +289,7 @@ static void changement(struct nurbs *o)
 			o->affichage.table[k] = calcPoint(o->table_nurbs, o->sequence_nodale, u, r, o->degre + 1);
 			u += pas;
 		}
+		
 	}
 
 }
@@ -310,4 +307,4 @@ CLASSE(nurbs, struct nurbs,
        MENU("TP_PERSO/nurbs")
        EVENEMENT("Ctrl+NU")
        )
-      
+       
